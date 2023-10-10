@@ -94,6 +94,7 @@ if(!isset($_SESSION['fnirs_unique_id'])){
         function loaded() {
             document.getElementById("main_page").style.display = "block";
             document.getElementById("loading_div").classList.add("loaded");
+            load_pending_app();
         }
     </script>
 </head>
@@ -110,6 +111,7 @@ if(!isset($_SESSION['fnirs_unique_id'])){
                 <button class="black-banner-link-hover" onclick="highlight_btn(this)">Data Management</button>
                 <button class="black-banner-link-hover" onclick="highlight_btn(this)">Pipeline Management</button>
                 <button class="black-banner-link-hover" onclick="highlight_btn(this)">Session Management</button>
+                <button class="black-banner-link-hover" onclick="highlight_btn(this)">Application Management</button>
                 <script>
                     function deselect_other_side_button(intext){
                         let all_buttons = document.getElementById("sidebar-buttons").getElementsByTagName("button");
@@ -454,6 +456,43 @@ if(!isset($_SESSION['fnirs_unique_id'])){
                                 </tr>
                             </table>
                         </div>
+                        <div class="panel" id="application-management-panel" style="display: none;">
+                            <h2 class="underline">Application Management</h2>
+                            <style>
+                                .app-detail-tr{
+                                    display: none !important;
+                                    user-select: none;
+                                }
+
+                                .app-detail-tr.show{
+                                    display: block !important;
+                                }
+                            </style>
+                            <h4 class="no-bot-margin" style="padding-left: 5px; padding-bottom: 5px;">Pending Application</h4>
+                            <table id="pending-app-list">
+                                <tr>
+                                    <td><b>Ref.</b></td>
+                                    <td><b>Gender</b></td>
+                                    <td><b>Action</b></td>
+                                </tr>
+                            </table>
+                            <h4 class="no-bot-margin" style="padding-left: 5px; padding-bottom: 5px;">Pending Confirmation</h4>
+                            <table id="conf-app-list">
+                                <tr>
+                                    <td><b>Ref.</b></td>
+                                    <td><b>Gender</b></td>
+                                    <td><b>Action</b></td>
+                                </tr>
+                            </table>
+                            <h4 class="no-bot-margin" style="padding-left: 5px; padding-bottom: 5px;">Processed Application</h4>
+                            <table id="proc-app-list">
+                                <tr>
+                                    <td><b>Ref.</b></td>
+                                    <td><b>Gender</b></td>
+                                    <td><b>Action</b></td>
+                                </tr>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </article>
@@ -593,6 +632,7 @@ if(!isset($_SESSION['fnirs_unique_id'])){
                             let $new_line_type = document.createElement("td")
                             $new_line_auth.innerText = dataObj[i].auth;
                             $new_line_type.innerText = dataObj[i].type;
+                            $new_line_auth.setAttribute('onclick', 'javascript:window.navigator.clipboard.writeText("https://www.sunrays.top/business/fnirs2023/account/activate/?auth_type='+ dataObj[i].type +'&auth_code='+ dataObj[i].auth +'");');
                             $new_line.append($new_line_auth);
                             $new_line.append($new_line_type);
                             $user_list.append($new_line)
@@ -683,11 +723,184 @@ if(!isset($_SESSION['fnirs_unique_id'])){
         document.getElementById('edit-box-'+scene_id).style.display="block";
         document.getElementById('data-display-box-'+scene_id).style.display="none";
     }
-</script>
-<script>
-    function request_serial(){
-        console.log("requesting serial port permissions...")
-        navigator.serial.requestPort();
+
+
+    function calculateAge(birthday) {
+        var today = new Date();
+        var birthDate = new Date(birthday);
+        var age = today.getFullYear() - birthDate.getFullYear();
+        var m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    }
+
+    function createRow(table, label, value) {
+        var row = document.createElement("tr");
+        var labelCell = document.createElement("td");
+        var valueCell = document.createElement("td");
+        labelCell.textContent = label;
+        valueCell.textContent = value;
+        row.appendChild(labelCell);
+        row.appendChild(valueCell);
+        table.appendChild(row);
+    }
+
+    function create_lang_str(str){
+        let out_str = "";
+        if(str[0]==="1"){
+            out_str+="English, ";
+        }
+        if(str[1]==="1"){
+            out_str+="Mandarin, ";
+        }
+        if(str[2]==="1"){
+            out_str+="Cantonese, ";
+        }
+        if(str[3]==="1"){
+            out_str+="Other(";
+            let other_lang = str.substring(4,str.length-1);
+            out_str += other_lang+")";
+        }
+        out_str = out_str.trim();
+        if(out_str[out_str.length-1]===","){
+            return out_str.substring(0,out_str.length-1);
+        }else{
+            return out_str;
+        }
+    }
+
+    function load_pending_app(){
+        let xhr = new XMLHttpRequest();
+        xhr.open("POST", "/business/fnirs2023/php/get_all_app.php", true);
+        xhr.onload = () => {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    let data = xhr.response;
+                    let dataObj = JSON.parse(data);
+                    if (dataObj.length > 0) {
+                        for (let i=0; i < dataObj.length; i++) {
+                            let $new_line = document.createElement("tr");
+                            let $new_line_ref_td = document.createElement("td");
+                            let $new_line_ref = document.createElement("div");
+                            let $new_line_gender = document.createElement("td");
+                            let $new_line_actions = document.createElement("td");
+                            if(dataObj[i].status==="0"){
+                                $new_line_actions.style = "display: flex; flex-direction: row; flex-wrap: nowrap;";
+                                $new_line_actions.innerHTML = '<div class="black-banner-link-hover" style="margin-right: 5px; text-align: center; padding-top: 0px; padding-bottom: 0px;">✓</div><div style="text-align: center; padding-top: 0px; padding-bottom: 0px;" class="black-banner-link-hover">X</div>';
+                            }else{
+                                if(dataObj[i].status==="1"){
+                                    $new_line_actions.innerText = 'Approved';
+                                }else{
+                                    $new_line_actions.innerText = 'Rejected';
+                                }
+                            }
+                            $new_line_ref.innerText = dataObj[i].ref;
+                            $new_line_ref.className = "black-banner-link-hover";
+                            $new_line_ref.style = "width: fit-content; padding: 10px; padding-top:0; padding-bottom:0; cursor:pointer";
+                            $new_line_ref.setAttribute("onclick", "show_hide_app_detail(this)");
+                            $new_line_ref_td.append($new_line_ref);
+                            $new_line_gender.innerText = dataObj[i].gender;
+                            $new_line.append($new_line_ref_td);
+                            $new_line.append($new_line_gender);
+                            $new_line.append($new_line_actions);
+
+                            let userInfoContainer_tr = document.createElement("tr");
+                            userInfoContainer_tr.className = "app-detail-tr";
+                            let userData = dataObj[i];
+                            var userInfoContainer = document.createElement("div");
+                            userInfoContainer.style = "width:100%;padding:10px;"
+                            let basic_info = document.createElement('div');
+                            basic_info.innerHTML='<b>Basic Info</b>';
+                            var basicInfoDiv = document.createElement("table");
+                            var name = userData.fname + " " + userData.lname;
+                            createRow(basicInfoDiv, "Name", name);
+                            createRow(basicInfoDiv, "Birthday", userData.birthday);
+                            var age = calculateAge(userData.birthday);
+                            createRow(basicInfoDiv, "Age", age);
+                            createRow(basicInfoDiv, "Gender", userData.gender);
+                            createRow(basicInfoDiv, "Email", userData.email);
+                            createRow(basicInfoDiv, "Submit Time", userData.submit_time);
+                            userInfoContainer.append(basic_info);
+                            userInfoContainer.appendChild(basicInfoDiv);
+
+                            var langDiv = document.createElement("div");
+                            langDiv.style.marginTop = "15px";
+                            langDiv.innerHTML = "<b>Language</b>";
+                            var langTable = document.createElement("table");
+                            createRow(langTable, "Language before 7", create_lang_str(userData.lang_b47));
+                            createRow(langTable, "Language", create_lang_str(userData.lang));
+                            createRow(langTable, "Language with classmate", create_lang_str(userData.lang_wc));
+                            createRow(langTable, "Language with family", create_lang_str(userData.lang_wf));
+                            langDiv.appendChild(langTable);
+
+                            userInfoContainer.appendChild(langDiv);
+                            var musicDiv = document.createElement("div");
+                            musicDiv.style.marginTop = "15px";
+                            musicDiv.innerHTML = "<b>Music</b>";
+
+                            var musicTable = document.createElement("table");
+                            createRow(musicTable, "Childhood Music training", (userData.music === "1") ? "✓" : "X");
+                            createRow(musicTable, "Recent instrument practice", (userData.inst === "1") ? "✓" : "X");
+                            musicDiv.appendChild(musicTable);
+                            userInfoContainer.appendChild(musicDiv);
+
+                            var otherDiv = document.createElement("div");
+                            otherDiv.style.marginTop = "15px";
+                            otherDiv.innerHTML = "<b>Other</b>";
+                            var otherTable = document.createElement("table");
+                            createRow(otherTable, "Recent living arrangements", (userData.live_with === "1") ? "School" : "Family");
+                            otherDiv.appendChild(otherTable);
+                            userInfoContainer.appendChild(otherDiv);
+
+                            var idiomDiv = document.createElement("div");
+                            idiomDiv.style.marginTop = "15px";
+                            idiomDiv.innerHTML = "<b>Idiom</b>";
+                            var idiomTable = document.createElement("table");
+                            createRow(idiomTable, "Write", (userData.write_left === "1") ? "→" : (userData.write_left === "2") ? "=" : (userData.write_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Paint", (userData.paint_left === "1") ? "→" : (userData.paint_left === "2") ? "=" : (userData.paint_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Throw", (userData.throw_left === "1") ? "→" : (userData.throw_left === "2") ? "=" : (userData.throw_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Scissors", (userData.scissors_left === "1") ? "→" : (userData.scissors_left === "2") ? "=" : (userData.scissors_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Toothbrush", (userData.toothbrush_left === "1") ? "→" : (userData.toothbrush_left === "2") ? "=" : (userData.toothbrush_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Knife", (userData.knife_left === "1") ? "→" : (userData.knife_left === "2") ? "=" : (userData.knife_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Spoon", (userData.spoon_left === "1") ? "→" : (userData.spoon_left === "2") ? "=" : (userData.spoon_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Broom", (userData.broom_left === "1") ? "←" : (userData.broom_left === "2") ? "=" : (userData.broom_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Match", (userData.match_left === "1") ? "→" : (userData.match_left === "2") ? "=" : (userData.match_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Unbox", (userData.unbox_left === "1") ? "→" : (userData.unbox_left === "2") ? "=" : (userData.unbox_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Kick", (userData.kick_left === "1") ? "→" : (userData.kick_left === "2") ? "=" : (userData.kick_left === "3") ? "→" : "N/A");
+                            createRow(idiomTable, "Monocular", (userData.eye_left === "1") ? "→" : (userData.eye_left === "2") ? "=" : (userData.eye_left === "3") ? "→" : "N/A");
+                            idiomDiv.appendChild(idiomTable);
+                            userInfoContainer.appendChild(idiomDiv);
+
+                            document.getElementById('pending-app-list').append($new_line);
+                            userInfoContainer_tr.append(userInfoContainer);
+                            document.getElementById('pending-app-list').append(userInfoContainer_tr);
+                        }
+                    }else{
+                        let $new_line = document.createElement("tr");
+                        let $new_line_none = document.createElement("td");
+                        $new_line_none.innerText = "No applications of this kind at the moment.";
+                        $new_line.append($new_line_none);
+                        document.getElementById('pending-app-list').append($new_line);
+                        document.getElementById('proc-app-list').append($new_line);
+                        document.getElementById('conf-app-list').append($new_line);
+                    }
+                }
+            }
+        }
+        xhr.send();
+    }
+
+    function show_hide_app_detail(obj){
+        const all_details_tr = obj.parentElement.parentElement.parentElement.getElementsByClassName('app-detail-tr');
+        for (let i=0; i < all_details_tr.length; i++) {
+            let detail_tr = all_details_tr[i];
+            if(detail_tr!==obj.parentElement.parentElement.nextElementSibling && detail_tr.classList.contains('show')){
+                detail_tr.classList.remove('show');
+            }
+        }
+        obj.parentElement.parentElement.nextElementSibling.classList.toggle("show");
     }
 </script>
 </body>
